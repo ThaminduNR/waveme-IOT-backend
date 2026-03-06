@@ -1,0 +1,509 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                    WAVEME BACKEND - API DOCUMENTATION                           ║
+║                          Version 1.0.0                                           ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+BASE URL: http://localhost:5000/api
+
+================================================================================
+1. AUTHENTICATION ENDPOINTS
+================================================================================
+
+┌─ POST /api/auth/register
+│  Register a new user account
+│
+│  Access: Public
+│  Content-Type: application/json
+│
+│  REQUEST BODY:
+│  {
+│    "name": "Johnson Smith",
+│    "email": "johnson@email.com",
+│    "password": "secret123"
+│  }
+│
+│  RESPONSE (201 Created):
+│  {
+│    "success": true,
+│    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+│    "user": {
+│      "id": "507f1f77bcf86cd799439011",
+│      "name": "Johnson Smith",
+│      "email": "johnson@email.com",
+│      "createdAt": "2024-03-07T10:30:00.000Z"
+│    }
+│  }
+│
+│  ERROR RESPONSE (400):
+│  {
+│    "success": false,
+│    "message": "Email already registered"
+│  }
+│
+│  VALIDATION:
+│  - name: required, min 2 characters
+│  - email: required, valid email format
+│  - password: required, min 6 characters
+└─
+
+┌─ POST /api/auth/login
+│  Login user and receive JWT token
+│
+│  Access: Public
+│  Content-Type: application/json
+│
+│  REQUEST BODY:
+│  {
+│    "email": "johnson@email.com",
+│    "password": "secret123"
+│  }
+│
+│  RESPONSE (200 OK):
+│  {
+│    "success": true,
+│    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+│    "user": {
+│      "id": "507f1f77bcf86cd799439011",
+│      "name": "Johnson Smith",
+│      "email": "johnson@email.com",
+│      "createdAt": "2024-03-07T10:30:00.000Z"
+│    }
+│  }
+│
+│  ERROR RESPONSE (401):
+│  {
+│    "success": false,
+│    "message": "Invalid credentials"
+│  }
+│
+│  TOKEN INFO:
+│  - Expires in: 7 days
+│  - Use in all protected routes with "Authorization: Bearer <token>"
+└─
+
+┌─ POST /api/auth/forgot-password
+│  Request password reset code (sends 6-digit code to email)
+│
+│  Access: Public
+│  Content-Type: application/json
+│
+│  REQUEST BODY:
+│  {
+│    "email": "johnson@email.com"
+│  }
+│
+│  RESPONSE (200 OK):
+│  {
+│    "success": true,
+│    "message": "If an account exists, a reset code was sent to your email."
+│  }
+│
+│  NOTE:
+│  - Always returns success message for security (doesn't reveal if email exists)
+│  - 6-digit code sent via email
+│  - Code expires in 15 minutes
+└─
+
+┌─ POST /api/auth/verify-reset-code
+│  Verify the reset code is valid
+│
+│  Access: Public
+│  Content-Type: application/json
+│
+│  REQUEST BODY:
+│  {
+│    "email": "johnson@email.com",
+│    "code": "357475"
+│  }
+│
+│  RESPONSE (200 OK):
+│  {
+│    "success": true,
+│    "valid": true
+│  }
+│
+│  ERROR RESPONSE (400):
+│  {
+│    "success": false,
+│    "valid": false,
+│    "message": "Invalid or expired code"
+│  }
+│
+│  VALIDATION:
+│  - Code must match and not be expired
+│  - Code must not have been used before
+└─
+
+┌─ POST /api/auth/reset-password
+│  Reset password using valid reset code
+│
+│  Access: Public
+│  Content-Type: application/json
+│
+│  REQUEST BODY:
+│  {
+│    "email": "johnson@email.com",
+│    "code": "357475",
+│    "newPassword": "newpass123",
+│    "confirmPassword": "newpass123"
+│  }
+│
+│  RESPONSE (200 OK):
+│  {
+│    "success": true,
+│    "message": "Password reset successful"
+│  }
+│
+│  ERROR RESPONSE (400):
+│  {
+│    "success": false,
+│    "message": "Passwords do not match"
+│  }
+│
+│  VALIDATION:
+│  - newPassword === confirmPassword
+│  - newPassword: min 6 characters
+│  - Code must be valid and not expired
+└─
+
+┌─ POST /api/auth/logout
+│  Logout user (client-side token removal)
+│
+│  Access: Private (JWT Required)
+│  Content-Type: application/json
+│  Headers: Authorization: Bearer <token>
+│
+│  REQUEST BODY: {} (empty)
+│
+│  RESPONSE (200 OK):
+│  {
+│    "success": true,
+│    "message": "Logout successful. Please clear the token on the client side"
+│  }
+│
+│  NOTE:
+│  - Token management is client-side
+│  - Remove token from AsyncStorage or local storage
+└─
+
+================================================================================
+2. USER ENDPOINTS
+================================================================================
+
+┌─ GET /api/users/me
+│  Get current user profile information
+│
+│  Access: Private (JWT Required)
+│  Content-Type: application/json
+│  Headers: Authorization: Bearer <token>
+│
+│  REQUEST: None (no body)
+│
+│  RESPONSE (200 OK):
+│  {
+│    "success": true,
+│    "user": {
+│      "id": "507f1f77bcf86cd799439011",
+│      "name": "Johnson Smith",
+│      "email": "johnson@email.com",
+│      "avatarUrl": null,
+│      "createdAt": "2024-03-07T10:30:00.000Z"
+│    }
+│  }
+│
+│  ERROR RESPONSE (401):
+│  {
+│    "success": false,
+│    "message": "Invalid or malformed token"
+│  }
+│
+│  ERROR RESPONSE (404):
+│  {
+│    "success": false,
+│    "message": "User not found"
+│  }
+└─
+
+┌─ PUT /api/users/me
+│  Update user profile
+│
+│  Access: Private (JWT Required)
+│  Content-Type: application/json
+│  Headers: Authorization: Bearer <token>
+│
+│  REQUEST BODY (all optional):
+│  {
+│    "name": "Johnson Smith Updated",
+│    "email": "new@email.com",
+│    "password": "newpass123",
+│    "currentPassword": "oldpass123"
+│  }
+│
+│  RESPONSE (200 OK):
+│  {
+│    "success": true,
+│    "user": {
+│      "id": "507f1f77bcf86cd799439011",
+│      "name": "Johnson Smith Updated",
+│      "email": "new@email.com",
+│      "avatarUrl": null,
+│      "createdAt": "2024-03-07T10:30:00.000Z"
+│    }
+│  }
+│
+│  ERROR RESPONSE (400):
+│  {
+│    "success": false,
+│    "message": "Current password is required to change password"
+│  }
+│
+│  ERROR RESPONSE (401):
+│  {
+│    "success": false,
+│    "message": "Current password is incorrect"
+│  }
+│
+│  VALIDATION:
+│  - name: min 2 characters (if provided)
+│  - email: valid format, and must be unique (if provided)
+│  - password: min 6 characters, requires currentPassword verification
+│  - currentPassword: required if changing password
+└─
+
+================================================================================
+3. HEALTH CHECK
+================================================================================
+
+┌─ GET /api/health
+│  Check if API is running
+│
+│  Access: Public
+│  Content-Type: application/json
+│
+│  REQUEST: None
+│
+│  RESPONSE (200 OK):
+│  {
+│    "success": true,
+│    "message": "WaveMe API is running"
+│  }
+└─
+
+================================================================================
+4. ERROR RESPONSES
+================================================================================
+
+Standard Error Response Format:
+{
+  "success": false,
+  "message": "Error description"
+}
+
+HTTP Status Codes:
+- 200: Success
+- 201: Created
+- 400: Bad Request (validation error)
+- 401: Unauthorized (invalid token or credentials)
+- 404: Not Found
+- 500: Server Error
+
+================================================================================
+5. JWT AUTHENTICATION
+================================================================================
+
+HEADER FORMAT:
+Authorization: Bearer <token>
+
+TOKEN STRUCTURE:
+{
+  "userId": "507f1f77bcf86cd799439011",
+  "iat": 1709975400,
+  "exp": 1710580200
+}
+
+TOKEN EXPIRY: 7 days
+
+PROTECTED ROUTES:
+- GET /api/users/me
+- PUT /api/users/me
+- POST /api/auth/logout
+
+================================================================================
+6. FRONTEND INTEGRATION EXAMPLE
+================================================================================
+
+REGISTER USER:
+POST /api/auth/register
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "password123"
+}
+
+→ Store received 'token' in AsyncStorage/SecureStorage
+→ Navigate to Home screen
+
+LOGIN USER:
+POST /api/auth/login
+{
+  "email": "john@example.com",
+  "password": "password123"
+}
+
+→ Store received 'token' in AsyncStorage
+→ Add token to all protected requests: Authorization: Bearer {token}
+
+GET USER PROFILE:
+GET /api/users/me
+Headers: {
+  "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+
+→ Display user name and email on HomeScreen and ProfileScreen
+
+FORGOT PASSWORD:
+POST /api/auth/forgot-password
+{
+  "email": "john@example.com"
+}
+
+→ Show message: "Check your email for reset code"
+→ Navigate to EnterCode screen
+
+VERIFY CODE:
+POST /api/auth/verify-reset-code
+{
+  "email": "john@example.com",
+  "code": "357475"
+}
+
+→ If valid, navigate to EnterNewPassword screen
+→ If invalid, show error message
+
+RESET PASSWORD:
+POST /api/auth/reset-password
+{
+  "email": "john@example.com",
+  "code": "357475",
+  "newPassword": "newpass123",
+  "confirmPassword": "newpass123"
+}
+
+→ Show success message
+→ Reset navigation to LoginScreen
+
+UPDATE PROFILE:
+PUT /api/users/me
+Headers: {
+  "Authorization": "Bearer {token}"
+}
+{
+  "name": "John Doe Updated",
+  "email": "newemail@example.com"
+}
+
+→ Update UI with new user data
+
+================================================================================
+7. EMAIL CONFIGURATION
+================================================================================
+
+PASSWORD RESET EMAIL:
+- Service: Gmail SMTP
+- Host: smtp.gmail.com
+- Port: 587
+- Authentication: Gmail app password (not regular password)
+
+SETUP STEPS:
+1. Go to https://myaccount.google.com/apppasswords
+2. Select "Mail" and your device type
+3. Generate 16-character app password
+4. Add to .env file:
+   SMTP_USER=your-email@gmail.com
+   SMTP_PASSWORD=your-16-character-app-password
+
+================================================================================
+8. ENVIRONMENT VARIABLES
+================================================================================
+
+Required:
+PORT=5000
+MONGODB_URI=mongodb+srv://...
+JWT_SECRET=your-secret-key
+JWT_EXPIRE=7d
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+SMTP_FROM=your-email@gmail.com
+
+================================================================================
+9. DATABASE MODELS
+================================================================================
+
+USER COLLECTION:
+{
+  _id: ObjectId,
+  name: String (required),
+  email: String (required, unique),
+  password: String (hashed, required),
+  avatarUrl: String (optional),
+  createdAt: Date,
+  updatedAt: Date
+}
+
+PASSWORD_RESET_CODE COLLECTION:
+{
+  _id: ObjectId,
+  email: String (required),
+  code: String (6-digit, required),
+  expiresAt: Date (15 minutes),
+  used: Boolean (default: false),
+  createdAt: Date
+}
+
+================================================================================
+10. TESTING WITH POSTMAN/CURL
+================================================================================
+
+CURL EXAMPLES:
+
+Register:
+curl -X POST http://localhost:5000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"John","email":"john@test.com","password":"pass123"}'
+
+Login:
+curl -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"john@test.com","password":"pass123"}'
+
+Get Current User (with token):
+curl -X GET http://localhost:5000/api/users/me \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE"
+
+Forgot Password:
+curl -X POST http://localhost:5000/api/auth/forgot-password \
+  -H "Content-Type: application/json" \
+  -d '{"email":"john@test.com"}'
+
+Verify Reset Code:
+curl -X POST http://localhost:5000/api/auth/verify-reset-code \
+  -H "Content-Type: application/json" \
+  -d '{"email":"john@test.com","code":"357475"}'
+
+Reset Password:
+curl -X POST http://localhost:5000/api/auth/reset-password \
+  -H "Content-Type: application/json" \
+  -d '{"email":"john@test.com","code":"357475","newPassword":"newpass123","confirmPassword":"newpass123"}'
+
+Update Profile:
+curl -X PUT http://localhost:5000/api/users/me \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"John Updated","email":"john.new@test.com"}'
+
+================================================================================
+Version: 1.0.0
+Last Updated: March 7, 2026
+================================================================================
